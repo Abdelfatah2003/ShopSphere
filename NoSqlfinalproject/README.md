@@ -4,49 +4,56 @@ ShopSphere is a cloud-native, NoSQL-powered e-commerce product catalog built wit
 
 ## Features
 
-- **Product CRUD** — Create, read, update, and soft-delete products
+- **Product CRUD** — Create, read, update, and delete products
 - **Customer Reviews** — Submit ratings (1–5) and comments, computed average rating
 - **Category Filtering** — Efficient GSI-based query (no Scan)
 - **Pagination** — DynamoDB-native pagination with Previous/Next controls
 - **Review Sorting** — Sort reviews by date or rating, ascending or descending
-- **Soft Delete** — Products are soft-deleted with audit trail; admin panel to view/restore
-- **Duplicate Review Prevention** — Conditional PutItem prevents duplicate reviews per customer per product
+- **Hard Delete** — Products are permanently removed from DynamoDB
+- **Duplicate Review Prevention** — Prevents duplicate reviews per customer per product
 - **Timestamps** — ISO 8601 `created_at` / `updated_at` on all items
 - **Atomic Rating Updates** — Average rating computed and stored on the product item
 
 ## DynamoDB Schema Design
 
-### Single-Table Design
+### Two-Table Design
 
-| PK | SK | Type | Key Attributes |
-|---|---|---|---|
-| `PRODUCT#<id>` | `PROFILE` | product | name, category, price, stock_qty, avg_rating, review_count, is_deleted |
-| `PRODUCT#<id>` | `REVIEW#<timestamp>#<reviewId>` | review | customer_name, rating, comment |
+**ShopSphere_Products**
+
+| PK | Attributes |
+|---|---|
+| `product_id` | name, description, category, price, stock_quantity, avg_rating, review_count, is_deleted, created_at, updated_at |
+
+**ShopSphere_Reviews**
+
+| PK | SK | Attributes |
+|---|---|---|
+| `product_id` | `created_at#review_id` | review_id, customer_name, rating, comment, created_at |
 
 ### Access Patterns
 
 | Pattern | Operation |
 |---|---|
-| Get product by ID | `GetItem(PK=PRODUCT#<id>, SK=PROFILE)` |
-| List all products | `Scan()` — acceptable for MVP; paginated |
+| Get product by ID | `GetItem(PK=product_id)` on Products table |
+| List all products | `Scan()` on Products table — acceptable for MVP; paginated |
 | Products by category | **Query on CategoryIndex GSI** — efficient, no Scan |
-| Reviews for a product | `Query(PK=PRODUCT#<id>, SK begins_with REVIEW#)` |
+| Reviews for a product | `Query(PK=product_id)` on Reviews table |
 | Sort reviews by date | Native SK ordering (`ScanIndexForward`) |
 | Sort reviews by rating | In-memory sort after Query (fine for typical review counts) |
 
 ### Global Secondary Indexes
 
-**CategoryIndex**
+**CategoryIndex** (on Products table)
 - PK: `category` (string) — SK: `created_at` (string)
 - Projects: ALL — enables efficient product listing by category
 
-**ProductReviewsIndex**  
-- PK: `pk` (string) — SK: `created_at` (string)
+**ProductReviewsIndex** (on Reviews table)
+- PK: `product_id` (string) — SK: `created_at` (string)
 - Projects: ALL — enables date-sorted access to reviews
 
-### Why Single Table?
+### Why Two Tables?
 
-DynamoDB's single-table design keeps related data (products + their reviews) co-located, minimizes the number of requests, and follows NoSQL best practices. The PK `PRODUCT#<id>` groups a product and all its reviews, so fetching a product detail page requires at most one `GetItem` + one `Query`.
+Products and reviews have different access patterns and lifecycles. Separating them into two tables provides cleaner schema design, simpler query patterns, and better isolation. The products table uses `product_id` as a simple hash key, while the reviews table uses a composite key (`product_id` + `created_at#review_id`) to group reviews by product and enable native date sorting.
 
 ## Setup Instructions
 
@@ -58,8 +65,8 @@ DynamoDB's single-table design keeps related data (products + their reviews) co-
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/shopsphere.git
-cd shopsphere
+git clone https://github.com/Abdelfatah2003/ShopSphere.git
+cd ShopSphere
 
 # 2. (Recommended) Create a virtual environment
 python3 -m venv venv
@@ -77,16 +84,17 @@ python run_local.py
 
 ### Running with Real AWS DynamoDB
 
-1. Ensure your AWS credentials are configured (via `~/.aws/credentials` or environment variables)
-2. Update `.env`:
+1. Ensure your AWS credentials are configured in `.env`:
    ```
    DYNAMO_MODE=aws
    AWS_ACCESS_KEY_ID=your_access_key
    AWS_SECRET_ACCESS_KEY=your_secret_key
+   AWS_SESSION_TOKEN=your_session_token
    AWS_REGION=us-east-1
-   DYNAMO_TABLE_NAME=ShopSphere
+   PRODUCTS_TABLE=ShopSphere_Products
+   REVIEWS_TABLE=ShopSphere_Reviews
    ```
-3. Run: `python app.py`
+2. Run: `python app.py`
 
 ## Project Structure
 
@@ -106,7 +114,7 @@ shopsphere/
 │   ├── product.html    # Product detail + reviews
 │   ├── add_product.html
 │   ├── edit_product.html
-│   ├── admin.html      # Admin panel for soft-delete management
+│   ├── admin.html      # Admin panel for product management
 │   └── error.html
 └── static/
     └── style.css
@@ -144,14 +152,14 @@ The following scenarios from the assignment have been pre-implemented:
 - **Scenario A** — Atomic counters for average rating (`update_product_rating` uses `UpdateItem` with SET)
 - **Scenario B** — GSI-based category filter (CategoryIndex with Query instead of Scan)
 - **Scenario C** — Pagination with `LastEvaluatedKey` / `ExclusiveStartKey` (Previous/Next controls)
-- **Scenario D** — Soft delete (UpdateItem sets `is_deleted=true`; admin panel for restore)
+- **Scenario D** — Soft/Hard delete (soft delete sets `is_deleted=true`; hard delete calls `DeleteItem`)
 - **Scenario E** — ISO 8601 timestamps on all items (`created_at`, `updated_at`)
 - **Scenario F** — Duplicate review prevention (ConditionExpression on PutItem)
 
 ## Video Walkthrough
 
 1. **Introduction** — Name, student ID, and what ShopSphere does
-2. **Architecture** — DynamoDB schema (PK/SK, GSIs, single-table design)
+2. **Architecture** — DynamoDB schema (two tables, GSIs, single-table vs multi-table design)
 3. **Live Demo** — Add product, browse catalog, submit review
 4. **Code Walkthrough** — DynamoDB connection, Query/PutItem, review aggregation
 5. **Reflection** — One challenge and resolution
