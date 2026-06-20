@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Add Product{% endblock %}
+{% block content %}
+<h2>Add New Product</h2>
+<form method="POST" action="{{ url_for('add_product') }}" class="product-form">
+    <div class="form-group">
+        <label for="name">Product Name *</label>
+        <input type="text" name="name" id="name" value="{{ form.get('name', '') }}" required>
+    </div>
+    <div class="form-group">
+        <label for="description">Description</label>
+        <textarea name="description" id="description" rows="4">{{ form.get('description', '') }}</textarea>
+    </div>
+    <div class="form-group">
+        <label for="category">Category *</label>
+        <input type="text" name="category" id="category" value="{{ form.get('category', '') }}" required>
+    </div>
+    <div class="form-group">
+        <label for="price">Price *</label>
+        <input type="number" name="price" id="price" step="any" min="0.01" value="{{ form.get('price', '') }}" required>
+    </div>
+    <div class="form-group">
+        <label for="stock_quantity">Stock Quantity</label>
+        <input type="number" name="stock_quantity" id="stock_quantity" min="0" value="{{ form.get('stock_quantity', '0') }}">
+    </div>
+    <div class="form-group">
+        <label for="image_url">Image URL</label>
+        <input type="url" name="image_url" id="image_url" value="{{ form.get('image_url', '') }}" placeholder="https://example.com/image.jpg">
+    </div>
+    <button type="submit" class="btn">Create Product</button>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

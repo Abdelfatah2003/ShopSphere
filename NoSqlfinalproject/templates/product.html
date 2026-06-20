@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }}{% endblock %}
+{% block content %}
+<div class="product-detail">
+    <div class="product-header">
+        <div class="product-image-large">
+            {% if product.image_url %}
+                <img src="{{ product.image_url }}" alt="{{ product.name }}">
+            {% else %}
+                <div class="product-image-placeholder large">No Image</div>
+            {% endif %}
+        </div>
+        <div class="product-meta">
+            <h2>{{ product.name }}</h2>
+            <p class="category-badge">{{ product.category }}</p>
+            <p class="price large">${{ "%.2f"|format(product.price) }}</p>
+            <p>Stock: {{ product.stock_quantity }}</p>
+            <p>Rating: &#9733; {{ "%.1f"|format(product.avg_rating) }} ({{ product.review_count }} reviews)</p>
+            <p class="description">{{ product.description }}</p>
+            <div class="product-actions">
+                <a href="{{ url_for('edit_product', product_id=product.product_id) }}" class="btn">Edit</a>
+                <form method="POST" action="{{ url_for('delete_product', product_id=product.product_id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this product?')">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+
+    <h3>Customer Reviews</h3>
+
+    <div class="review-controls">
+        <form method="GET" action="{{ url_for('product_detail', product_id=product.product_id) }}" class="sort-form">
+            <label for="sort_by">Sort by:</label>
+            <select name="sort_by" id="sort_by">
+                <option value="date" {% if sort_by == 'date' %}selected{% endif %}>Date</option>
+                <option value="rating" {% if sort_by == 'rating' %}selected{% endif %}>Rating</option>
+            </select>
+            <select name="sort_order" id="sort_order">
+                <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Newest / Highest</option>
+                <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Oldest / Lowest</option>
+            </select>
+            <button type="submit" class="btn-small">Sort</button>
+        </form>
+    </div>
+
+    {% if reviews %}
+        <div class="reviews-list">
+            {% for review in reviews %}
+                <div class="review-card">
+                    <div class="review-header">
+                        <strong>{{ review.customer_name }}</strong>
+                        <span class="review-rating">
+                            {% for i in range(review.rating) %}&#9733;{% endfor %}{% for i in range(5 - review.rating) %}&#9734;{% endfor %}
+                        </span>
+                    </div>
+                    <p class="review-comment">{{ review.comment }}</p>
+                    <small class="review-date">{{ review.created_at[:10] }}</small>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="empty-state">No reviews yet. Be the first!</p>
+    {% endif %}
+
+    <hr>
+
+    <h3>Write a Review</h3>
+    <form method="POST" action="{{ url_for('add_review', product_id=product.product_id) }}" class="review-form">
+        <div class="form-group">
+            <label for="customer_name">Your Name:</label>
+            <input type="text" name="customer_name" id="customer_name" required>
+        </div>
+        <div class="form-group">
+            <label for="rating">Rating:</label>
+            <select name="rating" id="rating" required>
+                <option value="">Select rating</option>
+                <option value="1">1 - Poor</option>
+                <option value="2">2 - Fair</option>
+                <option value="3">3 - Good</option>
+                <option value="4">4 - Very Good</option>
+                <option value="5">5 - Excellent</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="comment">Comment:</label>
+            <textarea name="comment" id="comment" rows="4" required></textarea>
+        </div>
+        <button type="submit" class="btn">Submit Review</button>
+    </form>
+</div>
+{% endblock %}

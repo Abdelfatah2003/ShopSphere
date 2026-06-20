@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+*.egg-info/
+dist/
+build/
+*.pyc
+cleaned_restaurant_data.xlsx
+restaurant_sales_dataset_cleaned.xlsx

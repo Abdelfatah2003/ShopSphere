@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Product Catalog{% endblock %}
+{% block content %}
+<h2>Product Catalog</h2>
+
+<div class="toolbar">
+    <form method="GET" action="{{ url_for('index') }}" class="filter-form">
+        <label for="category">Filter by Category:</label>
+        <select name="category" id="category" onchange="this.form.submit()">
+            <option value="">All Categories</option>
+            {% for cat in categories %}
+                <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+        </select>
+        {% if category %}
+            <a href="{{ url_for('index') }}" class="btn-small">Clear</a>
+        {% endif %}
+    </form>
+    <a href="{{ url_for('add_product') }}" class="btn">+ Add Product</a>
+</div>
+
+{% if products %}
+    <div class="product-grid">
+        {% for product in products %}
+            <div class="product-card">
+                {% if product.image_url %}
+                    <img src="{{ product.image_url }}" alt="{{ product.name }}" class="product-image">
+                {% else %}
+                    <div class="product-image-placeholder">No Image</div>
+                {% endif %}
+                <div class="product-info">
+                    <h3><a href="{{ url_for('product_detail', product_id=product.product_id) }}">{{ product.name }}</a></h3>
+                    <p class="category-badge">{{ product.category }}</p>
+                    <p class="price">${{ "%.2f"|format(product.price) }}</p>
+                    <p class="rating">&#9733; {{ "%.1f"|format(product.avg_rating) }} ({{ product.review_count }})</p>
+                    <p class="stock">Stock: {{ product.stock_quantity }}</p>
+                </div>
+                <div class="product-actions">
+                    <a href="{{ url_for('edit_product', product_id=product.product_id) }}" class="btn-small">Edit</a>
+                    <form method="POST" action="{{ url_for('delete_product', product_id=product.product_id) }}" style="display:inline;">
+                        <button type="submit" class="btn-small btn-danger" onclick="return confirm('Delete this product?')">Delete</button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="pagination">
+        {% if has_prev %}
+            <a href="{{ url_for('index', category=category, dir='prev', page_size=page_size) }}" class="btn">&larr; Previous</a>
+        {% endif %}
+        {% if has_next %}
+            <a href="{{ url_for('index', category=category, dir='next', page_size=page_size) }}" class="btn">Next &rarr;</a>
+        {% endif %}
+    </div>
+{% else %}
+    <p class="empty-state">No products found.
+        {% if category %}Try a different category.{% endif %}
+        <a href="{{ url_for('add_product') }}">Add your first product</a>.
+    </p>
+{% endif %}
+{% endblock %}
